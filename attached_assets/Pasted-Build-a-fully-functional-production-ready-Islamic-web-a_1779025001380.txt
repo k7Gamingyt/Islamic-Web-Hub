@@ -1,0 +1,150 @@
+Build a fully functional, production-ready Islamic web application named “Quran Kareem”.
+
+TECH STACK:
+- React (Vite)
+- Tailwind CSS
+- Firebase (Firestore + optional Notifications)
+- REST APIs (AlQuran.cloud + AlAdhan)
+- Supabase or Firebase ONLY for Live Makkah link storage
+- Framer Motion animations
+- PWA support
+- Google AdMob (safe Islamic placement only)
+
+DESIGN SYSTEM:
+- Dark green, black, and gold theme
+- Dark mode default only
+- Premium Islamic luxury UI
+- Glassmorphism cards (blur + transparency)
+- Soft glow + elegant shadows
+- Smooth animations (fade, slide, scale)
+- Elegant Arabic typography
+- Fully RTL support (Arabic-first design)
+- Minimal, peaceful, spiritual UI
+- Fully responsive (mobile, tablet, desktop)
+
+ARCHITECTURE RULES (VERY IMPORTANT):
+- NO duplicate APIs or repeated logic
+- ALL API calls must be inside /services folder ONLY
+- UI must never directly call APIs
+- ONE service per feature only
+- Keep code clean, modular, scalable
+
+FOLDER STRUCTURE:
+/src
+  /components
+  /pages
+  /services
+  /context
+  /hooks
+  /utils
+
+CORE SERVICES:
+
+1. QuranService.js
+- Fetch 114 Surahs
+- Fetch Ayahs
+- Search Surah/Ayah
+- Cache responses
+API: https://api.alquran.cloud/api
+
+2. PrayerService.js
+- Prayer times (Fajr, Dhuhr, Asr, Maghrib, Isha)
+- Next prayer countdown
+- Monthly timetable
+API: https://api.aladhan.com/v1/timingsByCity
+
+3. QiblaService.js
+- Compass-based Qibla direction
+- GPS location detection
+- Distance to Makkah
+API: https://api.aladhan.com/v1/qibla
+
+LIVE MAKKAH FEATURE (IMPORTANT):
+- Store YouTube embed link in database (Firestore or Supabase)
+- Path: settings/liveMakkah
+- Field: url
+- App MUST fetch link dynamically
+- Users can ONLY view video, NOT edit
+- Admin can update link anytime without rebuilding app
+- Embed YouTube live stream in responsive iframe
+- Fallback URL must be provided if fetch fails
+
+QURAN MODULE:
+- Surah list (114 Surahs)
+- Surah reader screen
+- Arabic + English + Urdu translations
+- Font size control
+- Search Surah/Ayah
+- Bookmark Ayah (Firestore)
+- Copy + Share Ayah
+- Recently read history
+- ALL data must come ONLY from QuranService
+
+PRAYER TIMES:
+- Auto location detection
+- City input option
+- Live prayer times
+- Next prayer countdown
+- Optional push notifications
+
+QIBLA FINDER:
+- Compass direction
+- GPS-based Kaaba direction
+- Distance to Makkah
+
+DIGITAL TASBEEH:
+- Tap counter system
+- Vibration feedback
+- Preset zikr buttons
+
+ISLAMIC CALENDAR:
+- Hijri + Gregorian calendar
+- Ramadan countdown
+- Islamic events display
+
+HADITH SECTION:
+- Daily Hadith
+- Categories system
+- Share feature
+- Premium card UI design
+
+99 NAMES OF ALLAH:
+- Arabic + English meanings
+- Search system
+- Favorites system
+
+DUAS COLLECTION:
+- Morning, evening, travel, sleep duas
+- Arabic + translation + transliteration
+- Favorites system
+
+ADMOB MONETIZATION RULES:
+- Banner ads ONLY on home + list screens
+- Interstitial ads ONLY on navigation transitions
+- Rewarded ads for optional premium features
+- NO ads inside Quran reading screen
+- Respectful Islamic UX always
+
+HOME SCREEN:
+- Next prayer time widget
+- Continue reading Quran
+- Daily Hadith card
+- Quick Tasbeeh button
+- Qibla shortcut
+- Ramadan countdown
+- Featured Duas
+- Live Makkah stream widget
+- Subtle banner ad at bottom
+
+EXTRA FEATURES:
+- Offline caching for Quran data
+- Multi-language support (EN, UR, AR, TR)
+- PWA installable app
+- Performance optimization
+- Smooth animations everywhere
+
+APP SCREENS:
+Home, Quran, Surah Detail, Prayer Times, Qibla Finder, Tasbeeh, Islamic Calendar, Hadith, 99 Names, Duas, Live Makkah, Settings, Admin (hidden)
+
+FINAL GOAL:
+Build a clean, scalable, production-ready Islamic application that is peaceful, fast, API-driven, bug-free (no duplication), and ready for real-world users and Play Store approval.
