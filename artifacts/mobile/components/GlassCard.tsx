@@ -1,12 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { StyleSheet, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, ViewStyle } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   gradient?: readonly [string, string, ...string[]];
   padding?: number;
   onPress?: () => void;
@@ -14,7 +14,7 @@ interface GlassCardProps {
 
 export function GlassCard({ children, style, gradient, padding = 16 }: GlassCardProps) {
   const colors = useColors();
-  const grad: readonly [string, string] = gradient ?? [
+  const grad: readonly [string, string, ...string[]] = gradient ?? [
     "rgba(13,43,26,0.85)",
     "rgba(6,10,6,0.92)",
   ];

@@ -59,7 +59,7 @@ export default function QiblaScreen() {
           </View>
         ) : error ? (
           <View style={styles.center}>
-            <Feather name="map-pin-off" size={40} color={colors.mutedForeground} />
+            <Feather name="map-pin" size={40} color={colors.mutedForeground} />
             <Text style={[styles.errorText, { color: colors.foreground }]}>Location unavailable</Text>
             <Text style={[styles.errorSub, { color: colors.mutedForeground }]}>
               Please allow location access

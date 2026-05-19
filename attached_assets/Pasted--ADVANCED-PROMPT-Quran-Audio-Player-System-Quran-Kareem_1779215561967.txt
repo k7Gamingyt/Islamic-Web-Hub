@@ -1,0 +1,155 @@
+🚀 ADVANCED PROMPT — Quran Audio Player System (Quran Kareem App)
+
+Add a fully functional Quran Audio Player system to the existing React (Vite) Islamic app.
+
+This system must be production-grade, bug-free, and audio-conflict safe.
+
+🎧 CORE AUDIO REQUIREMENTS (VERY IMPORTANT)
+1. SINGLE GLOBAL AUDIO ENGINE (NO DUPLICATES)
+Create ONE global audio manager using:
+React Context OR Zustand (preferred Context)
+ONLY ONE audio instance allowed in the entire app
+NEVER allow multiple Surah audios playing at same time
+
+👉 RULE:
+If a new Surah starts → previous audio MUST STOP immediately
+
+2. AUDIO BEHAVIOR RULES
+Play / Pause / Stop must work correctly
+When user:
+exits Quran page → audio MUST STOP instantly
+switches Surah → previous audio stops automatically
+refreshes page → audio state resets
+No background ghost audio allowed
+3. SURAH AUDIO FEATURES
+
+Each Surah must support:
+
+▶️ Play Surah (full recitation)
+⏸ Pause
+⏹ Stop (reset to 0)
+⏭ Resume from last position (optional but preferred)
+🔁 Continue full Surah playback
+4. VERSE / AYAH LEVEL PLAY (ADVANCED)
+
+Inside Surah Detail page:
+
+Each Ayah must have a play button
+Clicking Ayah plays ONLY that verse audio
+If Surah is playing → stop Surah audio first
+No overlapping audio allowed
+
+👉 RULE:
+
+Either Surah FULL play OR single Ayah play
+NEVER both at the same time
+5. CONTINUOUS PLAY MODE (IMPORTANT)
+
+Add toggle:
+
+🔘 “Continuous Play”
+
+When ON:
+
+After finishing current Ayah → automatically play next Ayah
+After last Ayah → stop or move to next Surah (optional setting)
+
+When OFF:
+
+Only play selected Ayah once
+6. AUDIO PROVIDER (USE THIS API)
+
+Use this API ONLY through service layer:
+
+https://api.alquran.cloud/api
+
+Audio endpoint example:
+
+Surah audio:
+/v1/surah/{surahNumber}/ar.alafasy
+Ayah audio:
+/v1/ayah/{ayahKey}/ar.alafasy
+7. AUDIO SERVICE ARCHITECTURE (MANDATORY)
+
+Create:
+
+/src/services/QuranAudioService.js
+
+Must include:
+
+playSurah(surahNumber)
+playAyah(ayahKey)
+pauseAudio()
+stopAudio()
+resumeAudio()
+isPlaying state
+currentTrack tracking
+cleanup() function
+
+👉 ALL AUDIO LOGIC MUST LIVE HERE
+UI must NOT directly control HTML audio
+
+8. GLOBAL AUDIO CONTEXT
+
+Create:
+
+/src/context/AudioContext.jsx
+
+Must manage:
+
+current audio instance
+playing state
+current surah/ayah info
+stopPreviousAudio() function
+9. UI CONTROLS (QURAN PAGE)
+
+Add a floating mini-player:
+
+Shows:
+Surah name
+Play / Pause button
+Stop button
+Progress bar
+
+Must be:
+
+sticky bottom
+glassmorphism style
+smooth animations (Framer Motion)
+10. AUTO STOP RULES (VERY STRICT)
+
+Audio MUST stop when:
+
+user navigates away from Quran pages
+user opens:
+Prayer Times
+Home
+Qibla
+Tasbeeh
+browser tab becomes inactive (optional but preferred)
+11. PERFORMANCE RULES
+Preload only current Surah audio
+Lazy load next Surah audio
+Cache last played Surah in memory
+Avoid re-fetching same audio repeatedly
+12. ERROR HANDLING
+If audio fails:
+show fallback message “Unable to play recitation”
+retry button
+No app crash allowed
+13. UX RULES (ISLAMIC RESPECT DESIGN)
+No ads inside audio player
+Calm UI colors (green/black/gold theme)
+Smooth fade transitions
+No aggressive animations
+🎯 FINAL RESULT
+
+After implementation:
+
+✔ No overlapping audio
+✔ Perfect Surah playback system
+✔ Ayah-level control
+✔ Auto-stop on navigation
+✔ Continuous play mode
+✔ Clean global audio engine
+✔ Production-ready UX
