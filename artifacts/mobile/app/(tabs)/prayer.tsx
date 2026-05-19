@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdBanner } from "@/components/AdBanner";
 import { GlassCard } from "@/components/GlassCard";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
@@ -151,6 +152,9 @@ export default function PrayerScreen() {
             {data.date.readable} · {data.date.hijri.day} {data.date.hijri.month.en} {data.date.hijri.year} AH
           </Text>
         )}
+
+        {/* Banner ad */}
+        <AdBanner />
       </ScrollView>
     </LinearGradient>
   );

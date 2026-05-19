@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -15,51 +15,30 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdBanner } from "@/components/AdBanner";
 import { GlassCard } from "@/components/GlassCard";
 import { useColors } from "@/hooks/useColors";
 import { supabase } from "@/src/lib/supabase";
 
-interface LiveStream {
-  id: string;
-  url: string;
-  label: string;
-  labelAr: string;
-  description: string;
-}
+const FALLBACK_EMBED_URL = "https://www.youtube.com/embed/nFev59ZkyX8";
+const FALLBACK_WATCH_URL = "https://www.youtube.com/watch?v=nFev59ZkyX8";
 
-const STREAM_META: Record<string, { label: string; labelAr: string; description: string }> = {
-  liveMakkah: {
-    label: "Masjid al-Haram, Makkah",
-    labelAr: "الْمَسْجِدُ الْحَرَام",
-    description: "Live from the Grand Mosque",
-  },
-  liveMadina: {
-    label: "Masjid an-Nabawi, Madinah",
-    labelAr: "الْمَسْجِدُ النَّبَوِي",
-    description: "Live from the Prophet's Mosque",
-  },
-};
-
-function extractYouTubeId(url: string): string | null {
-  if (!url) return null;
+function extractVideoId(url: string): string | null {
   const patterns = [
+    /\/embed\/([^?&#/]+)/,
     /[?&]v=([^&#]+)/,
     /youtu\.be\/([^?&#]+)/,
     /\/live\/([^?&#]+)/,
-    /\/embed\/([^?&#]+)/,
   ];
   for (const p of patterns) {
-    const m = url.match(p);
+    const m = url?.match(p);
     if (m?.[1]) return m[1];
   }
   return null;
 }
 
-// YouTube iframe embed — works on web via React Native Web DOM passthrough
-function YoutubeEmbed({ videoId }: { videoId: string }) {
+function YoutubeIframe({ embedUrl }: { embedUrl: string }) {
   if (Platform.OS !== "web") return null;
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-  // Use createElement to pass a raw DOM iframe through react-native-web
   const Iframe = "iframe" as unknown as React.ElementType;
   return (
     <View style={styles.iframeWrapper}>
@@ -69,12 +48,11 @@ function YoutubeEmbed({ videoId }: { videoId: string }) {
           width: "100%",
           height: "100%",
           border: "none",
-          borderRadius: 12,
-          background: "#080D08",
+          background: "#000",
         }}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
-        title="Live stream"
+        title="Live Makkah"
       />
     </View>
   );
@@ -86,47 +64,56 @@ export default function MakkahScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const [streams, setStreams] = useState<LiveStream[]>([]);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [watchUrl, setWatchUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const fetchStreams = useCallback(async () => {
+  const fetchStream = useCallback(async () => {
     setLoading(true);
-    setFetchError(null);
+    setUsingFallback(false);
     try {
-      const { data, error: sbError } = await supabase
-        .from("settings")
-        .select("id, url")
-        .in("id", ["liveMakkah", "liveMadina"]);
+      const { data, error } = await supabase
+        .from("live_stream")
+        .select("live_url")
+        .eq("id", 1)
+        .single();
 
-      if (sbError) throw new Error(sbError.message);
+      if (error || !data?.live_url) throw new Error("No stream data");
 
-      const mapped: LiveStream[] = (data ?? [])
-        .filter((row: { id: string; url: string }) => row.id in STREAM_META && row.url)
-        .map((row: { id: string; url: string }) => ({
-          id: row.id,
-          url: row.url,
-          ...STREAM_META[row.id],
-        }));
-      setStreams(mapped);
-    } catch (e: unknown) {
-      setFetchError(e instanceof Error ? e.message : "Failed to load streams");
+      const liveUrl: string = data.live_url;
+      const videoId = extractVideoId(liveUrl);
+
+      if (videoId) {
+        setEmbedUrl(`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`);
+        setWatchUrl(`https://www.youtube.com/watch?v=${videoId}`);
+      } else if (liveUrl.includes("embed")) {
+        setEmbedUrl(liveUrl);
+        setWatchUrl(liveUrl.replace("/embed/", "/watch?v=").split("?")[0]);
+      } else {
+        setEmbedUrl(liveUrl);
+        setWatchUrl(liveUrl);
+      }
+    } catch {
+      setEmbedUrl(FALLBACK_EMBED_URL);
+      setWatchUrl(FALLBACK_WATCH_URL);
+      setUsingFallback(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchStreams();
-  }, [fetchStreams]);
+    fetchStream();
+  }, [fetchStream]);
 
-  const openExternal = async (url: string) => {
+  const openFullscreen = async () => {
+    const url = watchUrl ?? FALLBACK_WATCH_URL;
     try {
-      // Try to open in YouTube app first, fall back to browser
-      const youtubeApp = url.replace("https://www.youtube.com", "youtube://");
-      const canOpen = await Linking.canOpenURL(youtubeApp);
+      const ytApp = url.replace("https://www.youtube.com/watch?v=", "youtube://");
+      const canOpen = await Linking.canOpenURL(ytApp);
       if (canOpen) {
-        await Linking.openURL(youtubeApp);
+        await Linking.openURL(ytApp);
       } else {
         await WebBrowser.openBrowserAsync(url, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
@@ -145,7 +132,7 @@ export default function MakkahScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Live Makkah</Text>
-        <TouchableOpacity onPress={fetchStreams}>
+        <TouchableOpacity onPress={fetchStream}>
           <Feather name="refresh-cw" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
@@ -155,106 +142,72 @@ export default function MakkahScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.arabicTitle, { color: colors.gold }]}>بَيْتُ اللَّهِ الْحَرَام</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Live from Masjid al-Haram</Text>
 
         {/* Loading */}
         {loading && (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.gold} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading streams...</Text>
+            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+              Connecting to live stream...
+            </Text>
           </View>
         )}
 
-        {/* Error */}
-        {!loading && fetchError && (
-          <GlassCard style={styles.stateCard}>
-            <Feather name="wifi-off" size={32} color={colors.mutedForeground} />
-            <Text style={[styles.stateTitle, { color: colors.foreground }]}>Connection error</Text>
-            <Text style={[styles.stateMsg, { color: colors.mutedForeground }]}>{fetchError}</Text>
-            <TouchableOpacity onPress={fetchStreams} style={[styles.retryBtn, { borderColor: colors.gold }]}>
-              <Text style={[styles.retryText, { color: colors.gold }]}>Try again</Text>
-            </TouchableOpacity>
-          </GlassCard>
-        )}
-
-        {/* Empty — Supabase table has no rows yet */}
-        {!loading && !fetchError && streams.length === 0 && (
-          <GlassCard style={styles.stateCard}>
-            <Feather name="database" size={32} color={colors.mutedForeground} />
-            <Text style={[styles.stateTitle, { color: colors.foreground }]}>No streams configured</Text>
-            <Text style={[styles.stateMsg, { color: colors.mutedForeground }]}>
-              Add your YouTube URLs to the Supabase{" "}
-              <Text style={{ color: colors.gold, fontWeight: "700" }}>settings</Text> table:
-            </Text>
-            <View style={[styles.setupBox, { borderColor: colors.border, backgroundColor: "rgba(6,10,6,0.6)" }]}>
-              <Text style={[styles.setupCode, { color: colors.goldLight }]}>id: liveMakkah</Text>
-              <Text style={[styles.setupCode, { color: colors.mutedForeground }]}>
-                url: https://youtube.com/watch?v=...
-              </Text>
-              <View style={[styles.setupDivider, { backgroundColor: colors.border }]} />
-              <Text style={[styles.setupCode, { color: colors.goldLight }]}>id: liveMadina</Text>
-              <Text style={[styles.setupCode, { color: colors.mutedForeground }]}>
-                url: https://youtube.com/watch?v=...
-              </Text>
-            </View>
-            <TouchableOpacity onPress={fetchStreams} style={[styles.retryBtn, { borderColor: colors.gold }]}>
-              <Feather name="refresh-cw" size={14} color={colors.gold} />
-              <Text style={[styles.retryText, { color: colors.gold }]}>Reload</Text>
-            </TouchableOpacity>
-          </GlassCard>
-        )}
-
-        {/* Streams loaded */}
-        {!loading && streams.map((stream) => {
-          const videoId = extractYouTubeId(stream.url);
-          return (
-            <View key={stream.id}>
-              {/* Card header */}
-              <LinearGradient
-                colors={["rgba(27,94,53,0.85)", "rgba(13,43,26,0.95)"]}
-                style={[styles.streamHeader, { borderRadius: colors.radius, borderColor: "rgba(201,168,76,0.25)" }]}
-              >
-                <View style={styles.streamTitleRow}>
-                  <View style={styles.liveIndicator}>
-                    <View style={[styles.liveDot, { backgroundColor: "#ef4444" }]} />
-                    <Text style={[styles.liveText, { color: "#ef4444" }]}>LIVE</Text>
-                  </View>
-                  <Text style={[styles.streamArabic, { color: colors.gold }]}>{stream.labelAr}</Text>
+        {/* Player */}
+        {!loading && (
+          <>
+            {/* Stream label */}
+            <LinearGradient
+              colors={["rgba(27,94,53,0.85)", "rgba(13,43,26,0.95)"]}
+              style={[styles.streamHeader, { borderRadius: colors.radius, borderColor: "rgba(201,168,76,0.25)" }]}
+            >
+              <View style={styles.titleRow}>
+                <View style={styles.liveRow}>
+                  <View style={[styles.liveDot, { backgroundColor: "#ef4444" }]} />
+                  <Text style={[styles.liveLabel, { color: "#ef4444" }]}>LIVE</Text>
                 </View>
-                <Text style={[styles.streamLabel, { color: colors.foreground }]}>{stream.label}</Text>
-                <Text style={[styles.streamDesc, { color: colors.mutedForeground }]}>{stream.description}</Text>
-              </LinearGradient>
+                {usingFallback && (
+                  <View style={[styles.fallbackBadge, { backgroundColor: "rgba(201,168,76,0.15)", borderColor: "rgba(201,168,76,0.3)" }]}>
+                    <Text style={[styles.fallbackText, { color: colors.goldLight }]}>Backup stream</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.streamArabic, { color: colors.gold }]}>الْمَسْجِدُ الْحَرَام</Text>
+              <Text style={[styles.streamName, { color: colors.foreground }]}>Masjid al-Haram, Makkah</Text>
+            </LinearGradient>
 
-              {/* Embedded player (web only) */}
-              {Platform.OS === "web" && videoId && (
-                <YoutubeEmbed videoId={videoId} />
-              )}
+            {/* Embedded player — web only */}
+            {Platform.OS === "web" && embedUrl && (
+              <YoutubeIframe embedUrl={embedUrl} />
+            )}
 
-              {/* Open externally button */}
-              <TouchableOpacity
-                onPress={() => openExternal(stream.url)}
-                activeOpacity={0.8}
-                style={[styles.watchBtn, { backgroundColor: colors.goldDim, borderColor: "rgba(201,168,76,0.4)" }]}
-              >
-                <Feather name="external-link" size={16} color={colors.gold} />
-                <Text style={[styles.watchText, { color: colors.gold }]}>
-                  {Platform.OS === "web" ? "Open in YouTube" : "Watch in YouTube App"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })}
+            {/* Full-screen button */}
+            <TouchableOpacity
+              onPress={openFullscreen}
+              activeOpacity={0.8}
+              style={[styles.fullscreenBtn, { backgroundColor: colors.goldDim, borderColor: "rgba(201,168,76,0.4)" }]}
+            >
+              <Feather name="maximize" size={18} color={colors.gold} />
+              <Text style={[styles.fullscreenText, { color: colors.gold }]}>
+                {Platform.OS === "web" ? "Open Full Screen in YouTube" : "Watch Full Screen"}
+              </Text>
+            </TouchableOpacity>
 
-        {/* Info note */}
-        {!loading && streams.length > 0 && (
-          <GlassCard style={styles.infoCard}>
-            <Feather name="info" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-              {Platform.OS === "web"
-                ? "Videos are embedded above. Use the button to open full-screen in YouTube."
-                : "Tap 'Watch in YouTube App' to view the live stream on your device."}
-            </Text>
-          </GlassCard>
+            {/* Info */}
+            <GlassCard style={styles.infoCard}>
+              <Feather name="info" size={14} color={colors.mutedForeground} />
+              <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                {Platform.OS === "web"
+                  ? "The live video is embedded above. Tap the button to open full screen."
+                  : "Tap the button above to watch the live stream in full screen."}
+              </Text>
+            </GlassCard>
+          </>
         )}
+
+        {/* Ad banner */}
+        <AdBanner />
       </ScrollView>
     </LinearGradient>
   );
@@ -272,37 +225,18 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: "700" },
   body: { paddingHorizontal: 16, gap: 14 },
   arabicTitle: { fontSize: 22, fontWeight: "600", textAlign: "center", paddingTop: 4 },
+  subtitle: { fontSize: 13, textAlign: "center", marginTop: -8 },
   center: { alignItems: "center", gap: 12, paddingVertical: 40 },
   loadingText: { fontSize: 14 },
-  stateCard: { alignItems: "center", gap: 12, paddingVertical: 28 },
-  stateTitle: { fontSize: 16, fontWeight: "700" },
-  stateMsg: { fontSize: 13, textAlign: "center", lineHeight: 20 },
-  setupBox: { width: "100%", borderWidth: 1, borderRadius: 10, padding: 14, gap: 4 },
-  setupCode: { fontSize: 12, fontFamily: "monospace" },
-  setupDivider: { height: 0.5, marginVertical: 6 },
-  retryBtn: {
-    flexDirection: "row",
-    gap: 6,
-    borderWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 9,
-    borderRadius: 20,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  retryText: { fontSize: 14, fontWeight: "600" },
-  streamHeader: {
-    borderWidth: 1,
-    padding: 18,
-    gap: 6,
-  },
-  streamTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  liveIndicator: { flexDirection: "row", alignItems: "center", gap: 5 },
+  streamHeader: { borderWidth: 1, padding: 18, gap: 6 },
+  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  liveRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
-  liveText: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
-  streamArabic: { fontSize: 16, fontWeight: "500" },
-  streamLabel: { fontSize: 15, fontWeight: "600" },
-  streamDesc: { fontSize: 12 },
+  liveLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  fallbackBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  fallbackText: { fontSize: 10, fontWeight: "600" },
+  streamArabic: { fontSize: 17, fontWeight: "500" },
+  streamName: { fontSize: 14, fontWeight: "600" },
   iframeWrapper: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -310,17 +244,16 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#000",
   },
-  watchBtn: {
+  fullscreenBtn: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     borderWidth: 1,
-    paddingVertical: 13,
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
   },
-  watchText: { fontSize: 14, fontWeight: "700" },
+  fullscreenText: { fontSize: 15, fontWeight: "700" },
   infoCard: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
   infoText: { fontSize: 12, flex: 1, lineHeight: 18 },
 });

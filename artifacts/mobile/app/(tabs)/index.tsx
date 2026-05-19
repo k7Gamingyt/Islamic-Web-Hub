@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdBanner } from "@/components/AdBanner";
 import { GlassCard } from "@/components/GlassCard";
 import { useSettings } from "@/context/SettingsContext";
 import { getDailyHadith } from "@/constants/hadiths";
@@ -194,6 +195,9 @@ export default function HomeScreen() {
           </Text>
           <Feather name="settings" size={12} color={colors.mutedForeground} />
         </Pressable>
+
+        {/* Banner ad */}
+        <AdBanner />
       </ScrollView>
     </LinearGradient>
   );
